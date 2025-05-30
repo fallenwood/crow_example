@@ -6,6 +6,14 @@
 int main() {
   crow::SimpleApp app;
 
+  // TODO: do not use ifstream
+  CROW_ROUTE(app, "/")([]() {
+    std::ifstream file("ClientApp/dist/index.html");
+    std::stringstream buffer;
+    buffer << file.rdbuf();
+    return buffer.str();
+  });
+
   CROW_ROUTE(app, "/health")([]() { return "Healthy"; });
 
   CROW_ROUTE(app, "/greeting").methods("GET"_method)([]() {
