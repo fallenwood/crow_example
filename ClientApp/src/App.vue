@@ -1,17 +1,21 @@
 <script setup lang="ts">
-import HelloWorld from './components/HelloWorld.vue'
+import HelloWorld from './components/HelloWorld.vue';
+import {ref} from 'vue';
+
+const greeting = ref("Hello World");
+
+async function fetchGreeting() {
+  const response = await fetch("/greeting");
+  const data = await response.text();
+  greeting.value = data;
+}
 </script>
 
 <template>
-  <div>
-    <a href="https://vite.dev" target="_blank">
-      <img src="/vite.svg" class="logo" alt="Vite logo" />
-    </a>
-    <a href="https://vuejs.org/" target="_blank">
-      <img src="./assets/vue.svg" class="logo vue" alt="Vue logo" />
-    </a>
+  <div class="value">
+  {{ greeting }}
   </div>
-  <HelloWorld msg="Vite + Vue" />
+  <button @click="fetchGreeting()">click me</button>
 </template>
 
 <style scoped>
