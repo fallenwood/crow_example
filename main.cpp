@@ -1,14 +1,14 @@
+#define CROW_STATIC_DIRECTORY "ClientApp/dist"
+#define CROW_STATIC_ENDPOINT "/<path>"
+
 #include "crow.h"
 
 int main() {
   crow::SimpleApp app;
 
-  CROW_ROUTE(app, "/")([]() { return "Hello world"; });
-
   CROW_ROUTE(app, "/health")([]() { return "Healthy"; });
 
-  CROW_ROUTE(app, "/greeting")
-    .methods("GET"_method)([]() {
+  CROW_ROUTE(app, "/greeting").methods("GET"_method)([]() {
     static std::array<std::string, 3> data{"hello", "world", "!!!"};
     auto n = std::rand() % 3;
     return data[n];
