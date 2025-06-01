@@ -8,6 +8,7 @@ export default defineConfig({
     host: "0.0.0.0",
     proxy: {
       '/greeting': 'http://localhost:18080',
+      '/api': 'http://localhost:18080',
     }
   }
 });

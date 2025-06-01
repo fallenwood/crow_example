@@ -1,20 +1,12 @@
 <script setup lang="ts">
 import {ref} from 'vue';
+import TodoList from './components/TodoList.vue'
 
-const greeting = ref("Hello World");
-
-async function fetchGreeting() {
-  const response = await fetch("/greeting");
-  const data = await response.text();
-  greeting.value = data;
-}
 </script>
 
 <template>
-  <div class="value">
-  {{ greeting }}
-  </div>
-  <button @click="fetchGreeting()">click me</button>
+  <h1>Todo + Crow</h1>
+  <TodoList />
 </template>
 
 <style scoped>
