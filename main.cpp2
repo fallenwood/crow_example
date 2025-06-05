@@ -1,0 +1,140 @@
+#define CROW_STATIC_DIRECTORY "ClientApp/dist"
+#define CROW_STATIC_ENDPOINT "/<path>"
+
+#include <crow.h>
+
+#include "todo.h"
+#include <atomic>
+#include <map>
+#include <mutex>
+
+std::atomic<int> incrementer = 0;
+std::map<int, Todo> todos;
+std::mutex mutex;
+
+main: () = {
+  app: _ = crow::SimpleApp();
+
+  // app.loglevel(crow::LogLevel::Warning);
+
+  // TODO: do not use ifstream
+  CROW_ROUTE(app, "/")(:() -> _ = {
+    // std::ifstream file("ClientApp/dist/index.html");
+    file: _ = std::ifstream("ClientApp/dist/index.html");
+    buffer: _ = std::stringstream();
+    buffer << file.rdbuf();
+    return buffer.str();
+  });
+
+  CROW_ROUTE(app, "/health")(:() = "Healthy");
+
+  CROW_ROUTE(app, "/greeting").methods("GET"_method)(:() -> _ = {
+    data: std::array<std::string, 3> = ("hello", "world", "!!!");
+    // auto n = std::rand() % 3;
+    n: _ = std::rand() % data.size();
+    return data[n];
+  });
+
+  CROW_ROUTE(app, "/api/todo/list").methods("GET"_method)(:() -> _ = {
+    lock: std::lock_guard<std::mutex> = (mutex);
+    response: crow::json::wvalue = ();
+
+    response["status"] = 0;
+
+    todo_list: _ = std::vector<crow::json::wvalue>();
+    todo_list.reserve(todos.size());
+    for todos do (pair) {
+      todo: _ = pair.second;
+      todo_json: crow::json::wvalue = ();
+      todo_json["id"] = todo.id;
+      todo_json["task"] = todo.task;
+      todo_json["done"] = todo.done;
+      todo_list.push_back(todo_json);
+    }
+
+    response["data"] = move(todo_list);
+
+    return crow::response(response);
+  });
+
+  CROW_ROUTE(app, "/api/todo")
+      .methods("POST"_method)(:(req) -> _ = {
+        // std::cout << "Received POST request to /api/todo: " << req.body << std::endl;
+        x: _ = crow::json::load(req.body);
+        if (!x) {
+          return crow::response(crow::status::BAD_REQUEST);
+        }
+
+        task: _  = x["task"].s();
+        done: _ = x["done"].b();
+
+        id: _ = std::atomic_fetch_add(incrementer&, 1);
+
+        todo: Todo = (id, task, done);
+
+        todo_json: _ =crow::json::wvalue();
+        todo_json["id"] = todo.id;
+        todo_json["task"] = todo.task;
+        todo_json["done"] = todo.done;
+
+        {
+          lock: std::lock_guard<std::mutex> =  (mutex);
+          todos.insert((id, move(todo)));
+        }
+
+        response: crow::json::wvalue = ();
+        response["status"] = 0;
+        response["data"] = move(todo_json);
+
+        return crow::response(response);
+      });
+
+  CROW_ROUTE(app, "/api/todo/<int>")
+      .methods("PUT"_method)(:(req, id) -> _ = {
+        x: _ = crow::json::load(req.body);
+        if (!x) {
+          return crow::response(crow::status::BAD_REQUEST);
+        }
+        response: crow::json::wvalue = ();
+        done: bool = x["done"].b();
+
+        {
+          lock: std::lock_guard<std::mutex> = (mutex);
+          it: _ = todos.find(id);
+          if (it == todos.end()) {
+            return crow::response(crow::status::NOT_FOUND);
+          } else {
+            it*.second.done = done;
+
+            response["status"] = 0;
+
+            todo_json: crow::json::wvalue = ();
+            todo_json["id"] = it*.second.id;
+            todo_json["task"] = it*.second.task;
+            todo_json["done"] = it*.second.done;
+
+            response["data"] = move(todo_json);
+          }
+        }
+
+        return crow::response(response);
+      });
+
+  CROW_ROUTE(app, "/api/todo/<int>")
+      .methods("DELETE"_method)(:(req, id) -> _ = {
+        response: crow::json::wvalue = ();
+        {
+          lock: std::lock_guard<std::mutex> = (mutex);
+          it: _ = todos.find(id);
+          if (it == todos.end()) {
+            return crow::response(crow::status::NOT_FOUND);
+          }
+          todos.erase(it);
+
+          response["status"] = 0;
+          return crow::response(response);
+        }
+      });
+
+  app.port(18080).multithreaded().run();
+}
